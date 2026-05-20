@@ -10,7 +10,8 @@ async function main() {
     const args = process.argv.slice(2);
     const text = args[0] || 'https://github.com/origami-suki/MDE-QRCode';
     const outFile = args[1] || 'qrcode.svg';
-    const logoUrl = args[2];
+    const logoUrl = args[2] === 'none' ? undefined : args[2];
+    const fluidRadius = args[3] !== undefined ? parseFloat(args[3]) : 0.5;
     console.log(`Generating Material Expressive QR Code for: ${text}`);
     // Detect format from extension
     const ext = path_1.default.extname(outFile).toLowerCase().slice(1);
@@ -19,6 +20,7 @@ async function main() {
         const output = await (0, index_js_1.generateMDEQRCode)({
             text,
             logoUrl,
+            fluidRadius,
         }, format);
         // Resolve output path. If just a filename, put in 'output' directory.
         let outPath = path_1.default.resolve(process.cwd(), outFile);

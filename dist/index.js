@@ -10,7 +10,7 @@ const resvg_js_1 = require("@resvg/resvg-js");
 const jimp_1 = require("jimp");
 async function generateMDEQRCodeSVG(options) {
     const { text, size: viewSize = 512, margin = 4, primaryColor = '#1D1B20', // M3 OnSurface (Very dark)
-    backgroundColor = '#FFFFFF', errorCorrectionLevel = 'H', } = options;
+    backgroundColor = '#FFFFFF', errorCorrectionLevel = 'H', fluidRadius = 0.5, } = options;
     const qr = qrcode_1.default.create(text, { errorCorrectionLevel });
     const { modules } = qr;
     const count = modules.size;
@@ -33,15 +33,18 @@ async function generateMDEQRCodeSVG(options) {
             return true;
         return false;
     };
+    const hasLogo = !!options.logoUrl;
     const logoScale = 0.22;
     const logoAreaSize = count * logoScale;
     const logoStart = (count - logoAreaSize) / 2;
     const logoEnd = logoStart + logoAreaSize;
-    // Mask slightly larger area to avoid dots clinging too close to the logo container
     const isLogoArea = (x, y) => {
+        if (!hasLogo)
+            return false; // If no logo, do not mask/clear the center area
         return x >= logoStart - 0.5 && x < logoEnd + 0.5 && y >= logoStart - 0.5 && y < logoEnd + 0.5;
     };
-    const radius = cellSize * 0.5;
+    const radius = cellSize * Math.max(0, Math.min(0.5, fluidRadius));
+    const overlap = 0.5; // 0.5px sub-pixel overlap to completely eliminate fine white gaps/creases
     // Draw modules
     for (let y = 0; y < count; y++) {
         for (let x = 0; x < count; x++) {
@@ -50,7 +53,7 @@ async function generateMDEQRCodeSVG(options) {
             const cx = offset + x * cellSize;
             const cy = offset + y * cellSize;
             if (isDark(x, y)) {
-                // 1. Draw Black Cell with Convex (Outer) rounding where exposed to White cells
+                // 1. Draw Black Cell with Overlaps and Convex Corners
                 const T = isDark(x, y - 1) && !isFinder(x, y - 1) && !isLogoArea(x, y - 1);
                 const B = isDark(x, y + 1) && !isFinder(x, y + 1) && !isLogoArea(x, y + 1);
                 const L = isDark(x - 1, y) && !isFinder(x - 1, y) && !isLogoArea(x - 1, y);
@@ -59,65 +62,92 @@ async function generateMDEQRCodeSVG(options) {
                 const rTR = (T || R) ? 0 : radius;
                 const rBL = (B || L) ? 0 : radius;
                 const rBR = (B || R) ? 0 : radius;
+                // Apply slight physical overlap to connecting edges
+                const w = R ? cellSize + overlap : cellSize;
+                const h = B ? cellSize + overlap : cellSize;
                 svgPaths += `<path d="
           M ${cx + rTL} ${cy}
-          L ${cx + cellSize - rTR} ${cy}
-          Q ${cx + cellSize} ${cy} ${cx + cellSize} ${cy + rTR}
-          L ${cx + cellSize} ${cy + cellSize - rBR}
-          Q ${cx + cellSize} ${cy + cellSize} ${cx + cellSize - rBR} ${cy + cellSize}
-          L ${cx + rBL} ${cy + cellSize}
-          Q ${cx} ${cy + cellSize} ${cx} ${cy + cellSize - rBL}
+          L ${cx + w - rTR} ${cy}
+          Q ${cx + w} ${cy} ${cx + w} ${cy + rTR}
+          L ${cx + w} ${cy + h - rBR}
+          Q ${cx + w} ${cy + h} ${cx + w - rBR} ${cy + h}
+          L ${cx + rBL} ${cy + h}
+          Q ${cx} ${cy + h} ${cx} ${cy + h - rBL}
           L ${cx} ${cy + rTL}
           Q ${cx} ${cy} ${cx + rTL} ${cy}
           Z" fill="${primaryColor}" />`;
             }
             else {
-                // 2. Draw Black Concave (Inner) corner fills inside White cells
-                // This rounds out L-shaped turns perfectly without leaving gaps
+                // 2. Draw Concave Corner Fills with Overlaps (No white cracks)
                 const T = isDark(x, y - 1) && !isFinder(x, y - 1) && !isLogoArea(x, y - 1);
                 const B = isDark(x, y + 1) && !isFinder(x, y + 1) && !isLogoArea(x, y + 1);
                 const L = isDark(x - 1, y) && !isFinder(x - 1, y) && !isLogoArea(x - 1, y);
                 const R = isDark(x + 1, y) && !isFinder(x + 1, y) && !isLogoArea(x + 1, y);
                 // Top-Left corner: Dark above and left
                 if (T && L) {
-                    svgPaths += `<path d="M ${cx} ${cy} L ${cx + radius} ${cy} A ${radius} ${radius} 0 0 0 ${cx} ${cy + radius} Z" fill="${primaryColor}" />`;
+                    svgPaths += `<path d="M ${cx - overlap} ${cy - overlap} L ${cx + radius + overlap} ${cy - overlap} A ${radius} ${radius} 0 0 0 ${cx - overlap} ${cy + radius + overlap} Z" fill="${primaryColor}" />`;
                 }
                 // Top-Right corner: Dark above and right
                 if (T && R) {
-                    svgPaths += `<path d="M ${cx + cellSize} ${cy} L ${cx + cellSize - radius} ${cy} A ${radius} ${radius} 0 0 1 ${cx + cellSize} ${cy + radius} Z" fill="${primaryColor}" />`;
+                    svgPaths += `<path d="M ${cx + cellSize + overlap} ${cy - overlap} L ${cx + cellSize - radius - overlap} ${cy - overlap} A ${radius} ${radius} 0 0 1 ${cx + cellSize + overlap} ${cy + radius + overlap} Z" fill="${primaryColor}" />`;
                 }
                 // Bottom-Left corner: Dark below and left
                 if (B && L) {
-                    svgPaths += `<path d="M ${cx} ${cy + cellSize} L ${cx + radius} ${cy + cellSize} A ${radius} ${radius} 0 0 1 ${cx} ${cy + cellSize - radius} Z" fill="${primaryColor}" />`;
+                    svgPaths += `<path d="M ${cx - overlap} ${cy + cellSize + overlap} L ${cx + radius + overlap} ${cy + cellSize + overlap} A ${radius} ${radius} 0 0 1 ${cx - overlap} ${cy + cellSize - radius - overlap} Z" fill="${primaryColor}" />`;
                 }
                 // Bottom-Right corner: Dark below and right
                 if (B && R) {
-                    svgPaths += `<path d="M ${cx + cellSize} ${cy + cellSize} L ${cx + cellSize - radius} ${cy + cellSize} A ${radius} ${radius} 0 0 0 ${cx + cellSize} ${cy + cellSize - radius} Z" fill="${primaryColor}" />`;
+                    svgPaths += `<path d="M ${cx + cellSize + overlap} ${cy + cellSize + overlap} L ${cx + cellSize - radius - overlap} ${cy + cellSize + overlap} A ${radius} ${radius} 0 0 0 ${cx + cellSize + overlap} ${cy + cellSize - radius - overlap} Z" fill="${primaryColor}" />`;
                 }
             }
         }
     }
-    // Draw Bullseye Finders (Concentric Circles)
-    const drawBullseyeFinder = (startX, startY) => {
-        const x = offset + (startX + 3.5) * cellSize;
-        const y = offset + (startY + 3.5) * cellSize;
-        // Outer Ring
-        const outerRadius = 3.5 * cellSize;
-        const innerRadius = 2.5 * cellSize;
-        svgPaths += `<path d="M ${x} ${y - outerRadius} A ${outerRadius} ${outerRadius} 0 1 1 ${x} ${y + outerRadius} A ${outerRadius} ${outerRadius} 0 1 1 ${x} ${y - outerRadius} M ${x} ${y - innerRadius} A ${innerRadius} ${innerRadius} 0 1 0 ${x} ${y + innerRadius} A ${innerRadius} ${innerRadius} 0 1 0 ${x} ${y - innerRadius} Z" fill="${primaryColor}" fill-rule="evenodd" />`;
-        // Inner eye
+    // Draw Google MDE Finders: Outer is smooth rounded rectangle, Inner is perfect concentric circle
+    const drawMDEFinder = (startX, startY) => {
+        const ox = offset + startX * cellSize;
+        const oy = offset + startY * cellSize;
+        const outerSize = 7 * cellSize;
+        const outerRadius = 2.2 * cellSize; // Beautiful round corners for squircle frame
+        const innerHoleOffset = 1.0 * cellSize;
+        const innerHoleSize = 5.0 * cellSize;
+        const innerHoleRadius = 1.2 * cellSize; // Smooth inner ring hole
+        // Outer Frame Squircle with cutout (using evenodd fill rule)
+        svgPaths += `<path d="
+      M ${ox + outerRadius} ${oy}
+      h ${outerSize - 2 * outerRadius}
+      a ${outerRadius} ${outerRadius} 0 0 1 ${outerRadius} ${outerRadius}
+      v ${outerSize - 2 * outerRadius}
+      a ${outerRadius} ${outerRadius} 0 0 1 -${outerRadius} ${outerRadius}
+      h -${outerSize - 2 * outerRadius}
+      a ${outerRadius} ${outerRadius} 0 0 1 -${outerRadius} -${outerRadius}
+      v -${outerSize - 2 * outerRadius}
+      a ${outerRadius} ${outerRadius} 0 0 1 ${outerRadius} -${outerRadius}
+      Z
+      M ${ox + innerHoleOffset + innerHoleRadius} ${oy + innerHoleOffset}
+      h ${innerHoleSize - 2 * innerHoleRadius}
+      a ${innerHoleRadius} ${innerHoleRadius} 0 0 1 ${innerHoleRadius} ${innerHoleRadius}
+      v ${innerHoleSize - 2 * innerHoleRadius}
+      a ${innerHoleRadius} ${innerHoleRadius} 0 0 1 -${innerHoleRadius} ${innerHoleRadius}
+      h -${innerHoleSize - 2 * innerHoleRadius}
+      a ${innerHoleRadius} ${innerHoleRadius} 0 0 1 -${innerHoleRadius} -${innerHoleRadius}
+      v -${innerHoleSize - 2 * innerHoleRadius}
+      a ${innerHoleRadius} ${innerHoleRadius} 0 0 1 ${innerHoleRadius} -${innerHoleRadius}
+      Z" fill="${primaryColor}" fill-rule="evenodd" />`;
+        // Center eye: Perfect Circle (Google style)
+        const centerEyeX = ox + 3.5 * cellSize;
+        const centerEyeY = oy + 3.5 * cellSize;
         const eyeRadius = 1.5 * cellSize;
-        svgPaths += `<circle cx="${x}" cy="${y}" r="${eyeRadius}" fill="${primaryColor}" />`;
+        svgPaths += `<circle cx="${centerEyeX}" cy="${centerEyeY}" r="${eyeRadius}" fill="${primaryColor}" />`;
     };
-    drawBullseyeFinder(0, 0);
-    drawBullseyeFinder(count - 7, 0);
-    drawBullseyeFinder(0, count - 7);
-    // Logo Cutout and Logo
-    const center = viewSize / 2;
-    const logoContainerRadius = (logoAreaSize * cellSize) / 2 + cellSize * 0.3;
-    // High precision smooth cutout
-    svgPaths += `<circle cx="${center}" cy="${center}" r="${logoContainerRadius}" fill="${backgroundColor}" />`;
-    if (options.logoUrl) {
+    drawMDEFinder(0, 0);
+    drawMDEFinder(count - 7, 0);
+    drawMDEFinder(0, count - 7);
+    // Logo Cutout and Logo Embedding (Only if logo URL is provided)
+    if (hasLogo) {
+        const center = viewSize / 2;
+        const logoContainerRadius = (logoAreaSize * cellSize) / 2 + cellSize * 0.3;
+        // Seamless mask cutout
+        svgPaths += `<circle cx="${center}" cy="${center}" r="${logoContainerRadius}" fill="${backgroundColor}" />`;
         const logoImgSize = logoContainerRadius * 1.45;
         const lx = center - logoImgSize / 2;
         const ly = center - logoImgSize / 2;
@@ -131,7 +161,6 @@ async function generateMDEQRCode(options, format = 'svg') {
     if (format === 'svg') {
         return svg;
     }
-    // Convert SVG to PNG
     const resvg = new resvg_js_1.Resvg(svg, {
         fitTo: {
             mode: 'width',
