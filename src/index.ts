@@ -52,71 +52,68 @@ export async function generateMDEQRCodeSVG(options: MDEQRCodeOptions): Promise<s
   const logoStart = (count - logoAreaSize) / 2;
   const logoEnd = logoStart + logoAreaSize;
 
+  // Mask slightly larger area to avoid dots clinging too close to the logo container
   const isLogoArea = (x: number, y: number): boolean => {
-    return x >= logoStart - 1 && x < logoEnd + 1 && y >= logoStart - 1 && y < logoEnd + 1;
+    return x >= logoStart - 0.5 && x < logoEnd + 0.5 && y >= logoStart - 0.5 && y < logoEnd + 0.5;
   };
 
   const radius = cellSize * 0.5;
 
-  // Fluid Module Logic: Processing 4 quadrants per cell to handle convex AND concave corners
-  for (let y = 0; y <= count; y++) {
-    for (let x = 0; x <= count; x++) {
-      // We process the corner point at (x, y) which is shared by 4 cells:
-      // (x-1, y-1), (x, y-1), (x-1, y), (x, y)
-      const m00 = isDark(x - 1, y - 1) && !isFinder(x - 1, y - 1) && !isLogoArea(x - 1, y - 1);
-      const m10 = isDark(x, y - 1) && !isFinder(x, y - 1) && !isLogoArea(x, y - 1);
-      const m01 = isDark(x - 1, y) && !isFinder(x - 1, y) && !isLogoArea(x - 1, y);
-      const m11 = isDark(x, y) && !isFinder(x, y) && !isLogoArea(x, y);
+  // Draw modules
+  for (let y = 0; y < count; y++) {
+    for (let x = 0; x < count; x++) {
+      if (isLogoArea(x, y) || isFinder(x, y)) continue;
 
       const cx = offset + x * cellSize;
       const cy = offset + y * cellSize;
 
-      // Configuration bitmask (0-15)
-      const config = (m00 ? 1 : 0) | (m10 ? 2 : 0) | (m01 ? 4 : 0) | (m11 ? 8 : 0);
+      if (isDark(x, y)) {
+        // 1. Draw Black Cell with Convex (Outer) rounding where exposed to White cells
+        const T = isDark(x, y - 1) && !isFinder(x, y - 1) && !isLogoArea(x, y - 1);
+        const B = isDark(x, y + 1) && !isFinder(x, y + 1) && !isLogoArea(x, y + 1);
+        const L = isDark(x - 1, y) && !isFinder(x - 1, y) && !isLogoArea(x - 1, y);
+        const R = isDark(x + 1, y) && !isFinder(x + 1, y) && !isLogoArea(x + 1, y);
 
-      if (config === 0 || config === 15) continue;
+        const rTL = (T || L) ? 0 : radius;
+        const rTR = (T || R) ? 0 : radius;
+        const rBL = (B || L) ? 0 : radius;
+        const rBR = (B || R) ? 0 : radius;
 
-      // Draw the corner based on configuration
-      // This logic creates smooth transitions for all 16 possible 2x2 module arrangements
-      switch (config) {
-        case 1: // Only top-left is dark -> Convex corner
-          svgPaths += `<path d="M ${cx} ${cy - radius} A ${radius} ${radius} 0 0 1 ${cx - radius} ${cy} L ${cx} ${cy} Z" fill="${primaryColor}" />`;
-          break;
-        case 2: // Only top-right is dark
-          svgPaths += `<path d="M ${cx + radius} ${cy} A ${radius} ${radius} 0 0 1 ${cx} ${cy - radius} L ${cx} ${cy} Z" fill="${primaryColor}" />`;
-          break;
-        case 4: // Only bottom-left is dark
-          svgPaths += `<path d="M ${cx - radius} ${cy} A ${radius} ${radius} 0 0 1 ${cx} ${cy + radius} L ${cx} ${cy} Z" fill="${primaryColor}" />`;
-          break;
-        case 8: // Only bottom-right is dark
-          svgPaths += `<path d="M ${cx} ${cy + radius} A ${radius} ${radius} 0 0 1 ${cx + radius} ${cy} L ${cx} ${cy} Z" fill="${primaryColor}" />`;
-          break;
-        case 7: // All except bottom-right are dark -> Concave corner
-          svgPaths += `<path d="M ${cx} ${cy + radius} A ${radius} ${radius} 0 0 0 ${cx + radius} ${cy} L ${cx + radius} ${cy + radius} Z" fill="${primaryColor}" />`;
-          break;
-        case 11: // All except bottom-left are dark
-          svgPaths += `<path d="M ${cx - radius} ${cy} A ${radius} ${radius} 0 0 0 ${cx} ${cy + radius} L ${cx - radius} ${cy + radius} Z" fill="${primaryColor}" />`;
-          break;
-        case 13: // All except top-right are dark
-          svgPaths += `<path d="M ${cx} ${cy - radius} A ${radius} ${radius} 0 0 0 ${cx + radius} ${cy} L ${cx + radius} ${cy - radius} Z" fill="${primaryColor}" />`;
-          break;
-        case 14: // All except top-left are dark
-          svgPaths += `<path d="M ${cx - radius} ${cy} A ${radius} ${radius} 0 0 0 ${cx} ${cy - radius} L ${cx - radius} ${cy - radius} Z" fill="${primaryColor}" />`;
-          break;
-        // Standard straight connections
-        case 3: svgPaths += `<rect x="${cx - radius}" y="${cy - radius}" width="${cellSize}" height="${radius}" fill="${primaryColor}" />`; break;
-        case 12: svgPaths += `<rect x="${cx - radius}" y="${cy}" width="${cellSize}" height="${radius}" fill="${primaryColor}" />`; break;
-        case 5: svgPaths += `<rect x="${cx - radius}" y="${cy - radius}" width="${radius}" height="${cellSize}" fill="${primaryColor}" />`; break;
-        case 10: svgPaths += `<rect x="${cx}" y="${cy - radius}" width="${radius}" height="${cellSize}" fill="${primaryColor}" />`; break;
-        // Diagonal cases (rare but happen)
-        case 6: // m10 and m01
-          svgPaths += `<path d="M ${cx + radius} ${cy} A ${radius} ${radius} 0 0 1 ${cx} ${cy - radius} L ${cx} ${cy} Z" fill="${primaryColor}" />`;
-          svgPaths += `<path d="M ${cx - radius} ${cy} A ${radius} ${radius} 0 0 1 ${cx} ${cy + radius} L ${cx} ${cy} Z" fill="${primaryColor}" />`;
-          break;
-        case 9: // m00 and m11
-          svgPaths += `<path d="M ${cx} ${cy - radius} A ${radius} ${radius} 0 0 1 ${cx - radius} ${cy} L ${cx} ${cy} Z" fill="${primaryColor}" />`;
-          svgPaths += `<path d="M ${cx} ${cy + radius} A ${radius} ${radius} 0 0 1 ${cx + radius} ${cy} L ${cx} ${cy} Z" fill="${primaryColor}" />`;
-          break;
+        svgPaths += `<path d="
+          M ${cx + rTL} ${cy}
+          L ${cx + cellSize - rTR} ${cy}
+          Q ${cx + cellSize} ${cy} ${cx + cellSize} ${cy + rTR}
+          L ${cx + cellSize} ${cy + cellSize - rBR}
+          Q ${cx + cellSize} ${cy + cellSize} ${cx + cellSize - rBR} ${cy + cellSize}
+          L ${cx + rBL} ${cy + cellSize}
+          Q ${cx} ${cy + cellSize} ${cx} ${cy + cellSize - rBL}
+          L ${cx} ${cy + rTL}
+          Q ${cx} ${cy} ${cx + rTL} ${cy}
+          Z" fill="${primaryColor}" />`;
+      } else {
+        // 2. Draw Black Concave (Inner) corner fills inside White cells
+        // This rounds out L-shaped turns perfectly without leaving gaps
+        const T = isDark(x, y - 1) && !isFinder(x, y - 1) && !isLogoArea(x, y - 1);
+        const B = isDark(x, y + 1) && !isFinder(x, y + 1) && !isLogoArea(x, y + 1);
+        const L = isDark(x - 1, y) && !isFinder(x - 1, y) && !isLogoArea(x - 1, y);
+        const R = isDark(x + 1, y) && !isFinder(x + 1, y) && !isLogoArea(x + 1, y);
+
+        // Top-Left corner: Dark above and left
+        if (T && L) {
+          svgPaths += `<path d="M ${cx} ${cy} L ${cx + radius} ${cy} A ${radius} ${radius} 0 0 0 ${cx} ${cy + radius} Z" fill="${primaryColor}" />`;
+        }
+        // Top-Right corner: Dark above and right
+        if (T && R) {
+          svgPaths += `<path d="M ${cx + cellSize} ${cy} L ${cx + cellSize - radius} ${cy} A ${radius} ${radius} 0 0 1 ${cx + cellSize} ${cy + radius} Z" fill="${primaryColor}" />`;
+        }
+        // Bottom-Left corner: Dark below and left
+        if (B && L) {
+          svgPaths += `<path d="M ${cx} ${cy + cellSize} L ${cx + radius} ${cy + cellSize} A ${radius} ${radius} 0 0 1 ${cx} ${cy + cellSize - radius} Z" fill="${primaryColor}" />`;
+        }
+        // Bottom-Right corner: Dark below and right
+        if (B && R) {
+          svgPaths += `<path d="M ${cx + cellSize} ${cy + cellSize} L ${cx + cellSize - radius} ${cy + cellSize} A ${radius} ${radius} 0 0 0 ${cx + cellSize} ${cy + cellSize - radius} Z" fill="${primaryColor}" />`;
+        }
       }
     }
   }
@@ -142,12 +139,13 @@ export async function generateMDEQRCodeSVG(options: MDEQRCodeOptions): Promise<s
 
   // Logo Cutout and Logo
   const center = viewSize / 2;
-  const logoContainerRadius = (logoAreaSize * cellSize) / 2 + cellSize * 0.2;
+  const logoContainerRadius = (logoAreaSize * cellSize) / 2 + cellSize * 0.3;
   
+  // High precision smooth cutout
   svgPaths += `<circle cx="${center}" cy="${center}" r="${logoContainerRadius}" fill="${backgroundColor}" />`;
   
   if (options.logoUrl) {
-    const logoImgSize = logoContainerRadius * 1.5;
+    const logoImgSize = logoContainerRadius * 1.45;
     const lx = center - logoImgSize / 2;
     const ly = center - logoImgSize / 2;
     svgPaths = `<defs><clipPath id="logo-clip"><circle cx="${center}" cy="${center}" r="${logoImgSize/2}" /></clipPath></defs>` + svgPaths;
