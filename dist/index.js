@@ -53,21 +53,15 @@ async function generateMDEQRCodeSVG(options) {
             const cx = offset + x * cellSize;
             const cy = offset + y * cellSize;
             if (isDark(x, y)) {
-                // 1. Draw Black Cell with Overlaps and Convex Corners (Considering Diagonal neighbors to prevent chiseled edges)
+                // 1. Draw Black Cell with Overlaps and Convex Corners (Only adjacent neighbors prevent outer roundings)
                 const T = isDark(x, y - 1) && !isFinder(x, y - 1) && !isLogoArea(x, y - 1);
                 const B = isDark(x, y + 1) && !isFinder(x, y + 1) && !isLogoArea(x, y + 1);
                 const L = isDark(x - 1, y) && !isFinder(x - 1, y) && !isLogoArea(x - 1, y);
                 const R = isDark(x + 1, y) && !isFinder(x + 1, y) && !isLogoArea(x + 1, y);
-                // Diagonal neighbors
-                const TL = isDark(x - 1, y - 1) && !isFinder(x - 1, y - 1) && !isLogoArea(x - 1, y - 1);
-                const TR = isDark(x + 1, y - 1) && !isFinder(x + 1, y - 1) && !isLogoArea(x + 1, y - 1);
-                const BL = isDark(x - 1, y + 1) && !isFinder(x - 1, y + 1) && !isLogoArea(x - 1, y + 1);
-                const BR = isDark(x + 1, y + 1) && !isFinder(x + 1, y + 1) && !isLogoArea(x + 1, y + 1);
-                // Convex corners are ONLY rounded if there are absolutely NO adjacent or diagonal neighbors at that corner
-                const rTL = (T || L || TL) ? 0 : radius;
-                const rTR = (T || R || TR) ? 0 : radius;
-                const rBL = (B || L || BL) ? 0 : radius;
-                const rBR = (B || R || BR) ? 0 : radius;
+                const rTL = (T || L) ? 0 : radius;
+                const rTR = (T || R) ? 0 : radius;
+                const rBL = (B || L) ? 0 : radius;
+                const rBR = (B || R) ? 0 : radius;
                 // Apply slight physical overlap to connecting edges
                 const w = R ? cellSize + overlap : cellSize;
                 const h = B ? cellSize + overlap : cellSize;
@@ -84,36 +78,32 @@ async function generateMDEQRCodeSVG(options) {
           Z" fill="${primaryColor}" />`;
             }
             else {
-                // 2. Draw Concave Corner Fills with Overlaps (No white cracks)
+                // 2. Draw Concave Corner Fills with Overlaps ONLY if they are connected through the diagonal cell
+                // This prevents creating weird chiseled blocks when cells are only diagonally connected
                 const T = isDark(x, y - 1) && !isFinder(x, y - 1) && !isLogoArea(x, y - 1);
                 const B = isDark(x, y + 1) && !isFinder(x, y + 1) && !isLogoArea(x, y + 1);
                 const L = isDark(x - 1, y) && !isFinder(x - 1, y) && !isLogoArea(x - 1, y);
                 const R = isDark(x + 1, y) && !isFinder(x + 1, y) && !isLogoArea(x + 1, y);
-                // Top-Left corner: Dark above and left
-                if (T && L) {
+                const TL = isDark(x - 1, y - 1) && !isFinder(x - 1, y - 1) && !isLogoArea(x - 1, y - 1);
+                const TR = isDark(x + 1, y - 1) && !isFinder(x + 1, y - 1) && !isLogoArea(x + 1, y - 1);
+                const BL = isDark(x - 1, y + 1) && !isFinder(x - 1, y + 1) && !isLogoArea(x - 1, y + 1);
+                const BR = isDark(x + 1, y + 1) && !isFinder(x + 1, y + 1) && !isLogoArea(x + 1, y + 1);
+                // Top-Left corner: Dark above, left, AND diagonally top-left
+                if (T && L && TL) {
                     svgPaths += `<path d="M ${cx - overlap} ${cy - overlap} L ${cx + radius + overlap} ${cy - overlap} A ${radius} ${radius} 0 0 0 ${cx - overlap} ${cy + radius + overlap} Z" fill="${primaryColor}" />`;
                 }
-                // Top-Right corner: Dark above and right
-                if (T && R) {
+                // Top-Right corner: Dark above, right, AND diagonally top-right
+                if (T && R && TR) {
                     svgPaths += `<path d="M ${cx + cellSize + overlap} ${cy - overlap} L ${cx + cellSize - radius - overlap} ${cy - overlap} A ${radius} ${radius} 0 0 1 ${cx + cellSize + overlap} ${cy + radius + overlap} Z" fill="${primaryColor}" />`;
                 }
-                // Bottom-Left corner: Dark below and left
-                if (B && L) {
+                // Bottom-Left corner: Dark below, left, AND diagonally bottom-left
+                if (B && L && BL) {
                     svgPaths += `<path d="M ${cx - overlap} ${cy + cellSize + overlap} L ${cx + radius + overlap} ${cy + cellSize + overlap} A ${radius} ${radius} 0 0 1 ${cx - overlap} ${cy + cellSize - radius - overlap} Z" fill="${primaryColor}" />`;
                 }
-                // Bottom-Right corner: Dark below and right
-                if (B && R) {
+                // Bottom-Right corner: Dark below, right, AND diagonally bottom-right
+                if (B && R && BR) {
                     svgPaths += `<path d="M ${cx + cellSize + overlap} ${cy + cellSize + overlap} L ${cx + cellSize - radius - overlap} ${cy + cellSize + overlap} A ${radius} ${radius} 0 0 0 ${cx + cellSize + overlap} ${cy + cellSize - radius - overlap} Z" fill="${primaryColor}" />`;
                 }
-            }
-            // 3. Micro Welding Bridge for Diagonal (Hourglass) Intersection points
-            // This centers a 1px solid square at the intersection point to physically weld kissing corners
-            const m00 = isDark(x - 1, y - 1) && !isFinder(x - 1, y - 1) && !isLogoArea(x - 1, y - 1);
-            const m10 = isDark(x, y - 1) && !isFinder(x, y - 1) && !isLogoArea(x, y - 1);
-            const m01 = isDark(x - 1, y) && !isFinder(x - 1, y) && !isLogoArea(x - 1, y);
-            const m11 = isDark(x, y) && !isFinder(x, y) && !isLogoArea(x, y);
-            if ((m00 && m11 && !m10 && !m01) || (m10 && m01 && !m00 && !m11)) {
-                svgPaths += `<rect x="${cx - 0.5}" y="${cy - 0.5}" width="1.0" height="1.0" fill="${primaryColor}" />`;
             }
         }
     }
