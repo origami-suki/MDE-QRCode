@@ -1,5 +1,7 @@
 import QRCode from 'qrcode';
 import { M3Colors } from './colors.js';
+import { Resvg } from '@resvg/resvg-js';
+import { Jimp, JimpMime } from 'jimp';
 
 export interface MDEQRCodeOptions {
   text: string;
@@ -17,8 +19,8 @@ export async function generateMDEQRCodeSVG(options: MDEQRCodeOptions): Promise<s
     text,
     size: viewSize = 512,
     margin = 4,
-    primaryColor = M3Colors.primary,
-    backgroundColor = M3Colors.surface,
+    primaryColor = '#1D1B20', // M3 OnSurface (Very dark)
+    backgroundColor = '#FFFFFF',
     errorCorrectionLevel = 'H',
   } = options;
 
@@ -31,96 +33,160 @@ export async function generateMDEQRCodeSVG(options: MDEQRCodeOptions): Promise<s
   let svgPaths = '';
 
   // Background
-  svgPaths += `<rect width="${viewSize}" height="${viewSize}" fill="${backgroundColor}" rx="${viewSize * 0.1}" />`;
+  svgPaths += `<rect width="${viewSize}" height="${viewSize}" fill="${backgroundColor}" />`;
+
+  const isDark = (x: number, y: number): boolean => {
+    if (x < 0 || y < 0 || x >= count || y >= count) return false;
+    return modules.get(x, y) !== 0;
+  };
 
   const isFinder = (x: number, y: number): boolean => {
-    if (x < 7 && y < 7) return true; // Top-left
-    if (x >= count - 7 && y < 7) return true; // Top-right
-    if (x < 7 && y >= count - 7) return true; // Bottom-left
+    if (x < 7 && y < 7) return true;
+    if (x >= count - 7 && y < 7) return true;
+    if (x < 7 && y >= count - 7) return true;
     return false;
   };
 
-  // Logo settings
-  const logoScale = 0.22; // 22% of the QR code size
+  const logoScale = 0.22;
   const logoAreaSize = count * logoScale;
   const logoStart = (count - logoAreaSize) / 2;
   const logoEnd = logoStart + logoAreaSize;
 
   const isLogoArea = (x: number, y: number): boolean => {
-    return x >= logoStart && x < logoEnd && y >= logoStart && y < logoEnd;
+    return x >= logoStart - 1 && x < logoEnd + 1 && y >= logoStart - 1 && y < logoEnd + 1;
   };
 
-  // Draw modules
-  for (let y = 0; y < count; y++) {
-    for (let x = 0; x < count; x++) {
-      if (modules.get(x, y) && !isFinder(x, y) && !isLogoArea(x, y)) {
-        const cx = offset + x * cellSize + cellSize / 2;
-        const cy = offset + y * cellSize + cellSize / 2;
-        svgPaths += `<circle cx="${cx}" cy="${cy}" r="${cellSize * 0.42}" fill="${primaryColor}" />`;
+  const radius = cellSize * 0.5;
+
+  // Fluid Module Logic: Processing 4 quadrants per cell to handle convex AND concave corners
+  for (let y = 0; y <= count; y++) {
+    for (let x = 0; x <= count; x++) {
+      // We process the corner point at (x, y) which is shared by 4 cells:
+      // (x-1, y-1), (x, y-1), (x-1, y), (x, y)
+      const m00 = isDark(x - 1, y - 1) && !isFinder(x - 1, y - 1) && !isLogoArea(x - 1, y - 1);
+      const m10 = isDark(x, y - 1) && !isFinder(x, y - 1) && !isLogoArea(x, y - 1);
+      const m01 = isDark(x - 1, y) && !isFinder(x - 1, y) && !isLogoArea(x - 1, y);
+      const m11 = isDark(x, y) && !isFinder(x, y) && !isLogoArea(x, y);
+
+      const cx = offset + x * cellSize;
+      const cy = offset + y * cellSize;
+
+      // Configuration bitmask (0-15)
+      const config = (m00 ? 1 : 0) | (m10 ? 2 : 0) | (m01 ? 4 : 0) | (m11 ? 8 : 0);
+
+      if (config === 0 || config === 15) continue;
+
+      // Draw the corner based on configuration
+      // This logic creates smooth transitions for all 16 possible 2x2 module arrangements
+      switch (config) {
+        case 1: // Only top-left is dark -> Convex corner
+          svgPaths += `<path d="M ${cx} ${cy - radius} A ${radius} ${radius} 0 0 1 ${cx - radius} ${cy} L ${cx} ${cy} Z" fill="${primaryColor}" />`;
+          break;
+        case 2: // Only top-right is dark
+          svgPaths += `<path d="M ${cx + radius} ${cy} A ${radius} ${radius} 0 0 1 ${cx} ${cy - radius} L ${cx} ${cy} Z" fill="${primaryColor}" />`;
+          break;
+        case 4: // Only bottom-left is dark
+          svgPaths += `<path d="M ${cx - radius} ${cy} A ${radius} ${radius} 0 0 1 ${cx} ${cy + radius} L ${cx} ${cy} Z" fill="${primaryColor}" />`;
+          break;
+        case 8: // Only bottom-right is dark
+          svgPaths += `<path d="M ${cx} ${cy + radius} A ${radius} ${radius} 0 0 1 ${cx + radius} ${cy} L ${cx} ${cy} Z" fill="${primaryColor}" />`;
+          break;
+        case 7: // All except bottom-right are dark -> Concave corner
+          svgPaths += `<path d="M ${cx} ${cy + radius} A ${radius} ${radius} 0 0 0 ${cx + radius} ${cy} L ${cx + radius} ${cy + radius} Z" fill="${primaryColor}" />`;
+          break;
+        case 11: // All except bottom-left are dark
+          svgPaths += `<path d="M ${cx - radius} ${cy} A ${radius} ${radius} 0 0 0 ${cx} ${cy + radius} L ${cx - radius} ${cy + radius} Z" fill="${primaryColor}" />`;
+          break;
+        case 13: // All except top-right are dark
+          svgPaths += `<path d="M ${cx} ${cy - radius} A ${radius} ${radius} 0 0 0 ${cx + radius} ${cy} L ${cx + radius} ${cy - radius} Z" fill="${primaryColor}" />`;
+          break;
+        case 14: // All except top-left are dark
+          svgPaths += `<path d="M ${cx - radius} ${cy} A ${radius} ${radius} 0 0 0 ${cx} ${cy - radius} L ${cx - radius} ${cy - radius} Z" fill="${primaryColor}" />`;
+          break;
+        // Standard straight connections
+        case 3: svgPaths += `<rect x="${cx - radius}" y="${cy - radius}" width="${cellSize}" height="${radius}" fill="${primaryColor}" />`; break;
+        case 12: svgPaths += `<rect x="${cx - radius}" y="${cy}" width="${cellSize}" height="${radius}" fill="${primaryColor}" />`; break;
+        case 5: svgPaths += `<rect x="${cx - radius}" y="${cy - radius}" width="${radius}" height="${cellSize}" fill="${primaryColor}" />`; break;
+        case 10: svgPaths += `<rect x="${cx}" y="${cy - radius}" width="${radius}" height="${cellSize}" fill="${primaryColor}" />`; break;
+        // Diagonal cases (rare but happen)
+        case 6: // m10 and m01
+          svgPaths += `<path d="M ${cx + radius} ${cy} A ${radius} ${radius} 0 0 1 ${cx} ${cy - radius} L ${cx} ${cy} Z" fill="${primaryColor}" />`;
+          svgPaths += `<path d="M ${cx - radius} ${cy} A ${radius} ${radius} 0 0 1 ${cx} ${cy + radius} L ${cx} ${cy} Z" fill="${primaryColor}" />`;
+          break;
+        case 9: // m00 and m11
+          svgPaths += `<path d="M ${cx} ${cy - radius} A ${radius} ${radius} 0 0 1 ${cx - radius} ${cy} L ${cx} ${cy} Z" fill="${primaryColor}" />`;
+          svgPaths += `<path d="M ${cx} ${cy + radius} A ${radius} ${radius} 0 0 1 ${cx + radius} ${cy} L ${cx} ${cy} Z" fill="${primaryColor}" />`;
+          break;
       }
     }
   }
 
-  // Draw Finders...
-  const drawFinder = (startX: number, startY: number) => {
-    const x = offset + startX * cellSize;
-    const y = offset + startY * cellSize;
-    const outerSize = 7 * cellSize;
-    const innerSize = 3 * cellSize;
-    const innerOffset = 2 * cellSize;
-    const radius = cellSize * 2.5; // Slightly larger radius for expressive look
+  // Draw Bullseye Finders (Concentric Circles)
+  const drawBullseyeFinder = (startX: number, startY: number) => {
+    const x = offset + (startX + 3.5) * cellSize;
+    const y = offset + (startY + 3.5) * cellSize;
+    
+    // Outer Ring
+    const outerRadius = 3.5 * cellSize;
+    const innerRadius = 2.5 * cellSize;
+    svgPaths += `<path d="M ${x} ${y - outerRadius} A ${outerRadius} ${outerRadius} 0 1 1 ${x} ${y + outerRadius} A ${outerRadius} ${outerRadius} 0 1 1 ${x} ${y - outerRadius} M ${x} ${y - innerRadius} A ${innerRadius} ${innerRadius} 0 1 0 ${x} ${y + innerRadius} A ${innerRadius} ${innerRadius} 0 1 0 ${x} ${y - innerRadius} Z" fill="${primaryColor}" fill-rule="evenodd" />`;
 
-    // Outer frame (Rounded square with hole)
-    svgPaths += `<path d="
-      M ${x + radius} ${y}
-      h ${outerSize - 2 * radius}
-      a ${radius} ${radius} 0 0 1 ${radius} ${radius}
-      v ${outerSize - 2 * radius}
-      a ${radius} ${radius} 0 0 1 -${radius} ${radius}
-      h -${outerSize - 2 * radius}
-      a ${radius} ${radius} 0 0 1 -${radius} -${radius}
-      v -${outerSize - 2 * radius}
-      a ${radius} ${radius} 0 0 1 ${radius} -${radius}
-      Z
-      M ${x + cellSize} ${y + cellSize}
-      v ${outerSize - 2 * cellSize}
-      h ${outerSize - 2 * cellSize}
-      v -${outerSize - 2 * cellSize}
-      Z" fill="${primaryColor}" fill-rule="evenodd" />`;
-
-    // Inner eye (Rounded square)
-    const eyeRadius = cellSize * 1.5;
-    const ex = x + innerOffset;
-    const ey = y + innerOffset;
-    svgPaths += `<path d="
-      M ${ex + eyeRadius} ${ey}
-      h ${innerSize - 2 * eyeRadius}
-      a ${eyeRadius} ${eyeRadius} 0 0 1 ${eyeRadius} ${eyeRadius}
-      v ${innerSize - 2 * eyeRadius}
-      a ${eyeRadius} ${eyeRadius} 0 0 1 -${eyeRadius} ${eyeRadius}
-      h -${innerSize - 2 * eyeRadius}
-      a ${eyeRadius} ${eyeRadius} 0 0 1 -${eyeRadius} -${eyeRadius}
-      v -${innerSize - 2 * eyeRadius}
-      a ${eyeRadius} ${eyeRadius} 0 0 1 ${eyeRadius} -${eyeRadius}
-      Z" fill="${primaryColor}" />`;
+    // Inner eye
+    const eyeRadius = 1.5 * cellSize;
+    svgPaths += `<circle cx="${x}" cy="${y}" r="${eyeRadius}" fill="${primaryColor}" />`;
   };
 
-  drawFinder(0, 0);
-  drawFinder(count - 7, 0);
-  drawFinder(0, count - 7);
+  drawBullseyeFinder(0, 0);
+  drawBullseyeFinder(count - 7, 0);
+  drawBullseyeFinder(0, count - 7);
 
-  // Draw Logo Container (Material Circle)
+  // Logo Cutout and Logo
   const center = viewSize / 2;
-  const logoContainerRadius = (logoAreaSize * cellSize) / 2 + cellSize;
+  const logoContainerRadius = (logoAreaSize * cellSize) / 2 + cellSize * 0.2;
+  
   svgPaths += `<circle cx="${center}" cy="${center}" r="${logoContainerRadius}" fill="${backgroundColor}" />`;
   
-  // If logo URL is provided, embed it
   if (options.logoUrl) {
-    const logoSize = logoContainerRadius * 1.4;
-    const lx = center - logoSize / 2;
-    const ly = center - logoSize / 2;
-    svgPaths += `<image href="${options.logoUrl}" x="${lx}" y="${ly}" width="${logoSize}" height="${logoSize}" />`;
+    const logoImgSize = logoContainerRadius * 1.5;
+    const lx = center - logoImgSize / 2;
+    const ly = center - logoImgSize / 2;
+    svgPaths = `<defs><clipPath id="logo-clip"><circle cx="${center}" cy="${center}" r="${logoImgSize/2}" /></clipPath></defs>` + svgPaths;
+    svgPaths += `<image href="${options.logoUrl}" x="${lx}" y="${ly}" width="${logoImgSize}" height="${logoImgSize}" clip-path="url(#logo-clip)" />`;
   }
 
   return `<svg width="${viewSize}" height="${viewSize}" viewBox="0 0 ${viewSize} ${viewSize}" xmlns="http://www.w3.org/2000/svg">${svgPaths}</svg>`;
+}
+
+export type MDEQRCodeFormat = 'svg' | 'png' | 'jpg' | 'jpeg';
+
+export async function generateMDEQRCode(
+  options: MDEQRCodeOptions,
+  format: MDEQRCodeFormat = 'svg'
+): Promise<string | Buffer> {
+  const svg = await generateMDEQRCodeSVG(options);
+
+  if (format === 'svg') {
+    return svg;
+  }
+
+  // Convert SVG to PNG
+  const resvg = new Resvg(svg, {
+    fitTo: {
+      mode: 'width',
+      value: options.size || 512,
+    },
+  });
+  const pngData = resvg.render();
+  const pngBuffer = pngData.asPng();
+
+  if (format === 'png') {
+    return pngBuffer;
+  }
+
+  if (format === 'jpg' || format === 'jpeg') {
+    const image = await Jimp.read(pngBuffer);
+    return await image.getBuffer(JimpMime.jpeg);
+  }
+
+  throw new Error(`Unsupported format: ${format}`);
 }
