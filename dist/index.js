@@ -58,6 +58,7 @@ async function generateMDEQRCodeSVG(options) {
                 const B = isDark(x, y + 1) && !isFinder(x, y + 1) && !isLogoArea(x, y + 1);
                 const L = isDark(x - 1, y) && !isFinder(x - 1, y) && !isLogoArea(x - 1, y);
                 const R = isDark(x + 1, y) && !isFinder(x + 1, y) && !isLogoArea(x + 1, y);
+                const BR = isDark(x + 1, y + 1) && !isFinder(x + 1, y + 1) && !isLogoArea(x + 1, y + 1);
                 const rTL = (T || L) ? 0 : radius;
                 const rTR = (T || R) ? 0 : radius;
                 const rBL = (B || L) ? 0 : radius;
@@ -69,8 +70,14 @@ async function generateMDEQRCodeSVG(options) {
           M ${cx + rTL} ${cy}
           L ${cx + w - rTR} ${cy}
           ${rTR > 0 ? `A ${rTR} ${rTR} 0 0 1 ${cx + w} ${cy + rTR}` : `L ${cx + w} ${cy}`}
+          ${(B && R && !BR) ? `
+          L ${cx + cellSize + overlap} ${cy + cellSize}
+          L ${cx + cellSize} ${cy + cellSize}
+          L ${cx + cellSize} ${cy + cellSize + overlap}
+          ` : `
           L ${cx + w} ${cy + h - rBR}
           ${rBR > 0 ? `A ${rBR} ${rBR} 0 0 1 ${cx + w - rBR} ${cy + h}` : `L ${cx + w} ${cy + h}`}
+          `}
           L ${cx + rBL} ${cy + h}
           ${rBL > 0 ? `A ${rBL} ${rBL} 0 0 1 ${cx} ${cy + h - rBL}` : `L ${cx} ${cy + h}`}
           L ${cx} ${cy + rTL}
