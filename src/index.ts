@@ -82,10 +82,10 @@ export async function generateMDEQRCodeSVG(options: MDEQRCodeOptions): Promise<s
         const R = isDark(x + 1, y) && !isFinder(x + 1, y) && !isLogoArea(x + 1, y);
         const BR = isDark(x + 1, y + 1) && !isFinder(x + 1, y + 1) && !isLogoArea(x + 1, y + 1);
 
-        const rTL = (T && L) ? radius2 : ((T || L) ? 0 : radius);
-        const rTR = (T && R) ? radius2 : ((T || R) ? 0 : radius);
-        const rBL = (B && L) ? radius2 : ((B || L) ? 0 : radius);
-        const rBR = (B && R) ? radius2 : ((B || R) ? 0 : radius);
+        const rTL = (T || L) ? 0 : radius;
+        const rTR = (T || R) ? 0 : radius;
+        const rBL = (B || L) ? 0 : radius;
+        const rBR = (B || R) ? 0 : radius;
 
         // Apply slight physical overlap to connecting edges
         const w = R ? cellSize + overlap : cellSize;
