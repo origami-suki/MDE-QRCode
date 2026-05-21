@@ -124,19 +124,19 @@ export async function generateMDEQRCodeSVG(options: MDEQRCodeOptions): Promise<s
 
         // Top-Left corner: Dark above, left, AND diagonally top-left
         if (T && L && TL) {
-          svgPaths += `<path d="M ${cx - overlap} ${cy - overlap} L ${cx + radius2 + overlap} ${cy - overlap} A ${radius2} ${radius2} 0 0 0 ${cx - overlap} ${cy + radius2 + overlap} Z" fill="${primaryColor}" />`;
+          svgPaths += `<path d="M ${cx - overlap} ${cy - overlap} L ${cx + radius2} ${cy - overlap} A ${radius2 + overlap} ${radius2 + overlap} 0 0 0 ${cx - overlap} ${cy + radius2} Z" fill="${primaryColor}" />`;
         }
         // Top-Right corner: Dark above, right, AND diagonally top-right
         if (T && R && TR) {
-          svgPaths += `<path d="M ${cx + cellSize + overlap} ${cy - overlap} L ${cx + cellSize - radius2 - overlap} ${cy - overlap} A ${radius2} ${radius2} 0 0 1 ${cx + cellSize + overlap} ${cy + radius2 + overlap} Z" fill="${primaryColor}" />`;
+          svgPaths += `<path d="M ${cx + cellSize + overlap} ${cy - overlap} L ${cx + cellSize - radius2} ${cy - overlap} A ${radius2 + overlap} ${radius2 + overlap} 0 0 1 ${cx + cellSize + overlap} ${cy + radius2} Z" fill="${primaryColor}" />`;
         }
         // Bottom-Left corner: Dark below, left, AND diagonally bottom-left
         if (B && L && BL) {
-          svgPaths += `<path d="M ${cx - overlap} ${cy + cellSize + overlap} L ${cx + radius2 + overlap} ${cy + cellSize + overlap} A ${radius2} ${radius2} 0 0 1 ${cx - overlap} ${cy + cellSize - radius2 - overlap} Z" fill="${primaryColor}" />`;
+          svgPaths += `<path d="M ${cx - overlap} ${cy + cellSize + overlap} L ${cx + radius2} ${cy + cellSize + overlap} A ${radius2 + overlap} ${radius2 + overlap} 0 0 1 ${cx - overlap} ${cy + cellSize - radius2} Z" fill="${primaryColor}" />`;
         }
         // Bottom-Right corner: Dark below, right, AND diagonally bottom-right
         if (B && R && BR) {
-          svgPaths += `<path d="M ${cx + cellSize + overlap} ${cy + cellSize + overlap} L ${cx + cellSize - radius2 - overlap} ${cy + cellSize + overlap} A ${radius2} ${radius2} 0 0 0 ${cx + cellSize + overlap} ${cy + cellSize - radius2 - overlap} Z" fill="${primaryColor}" />`;
+          svgPaths += `<path d="M ${cx + cellSize + overlap} ${cy + cellSize + overlap} L ${cx + cellSize - radius2} ${cy + cellSize + overlap} A ${radius2 + overlap} ${radius2 + overlap} 0 0 0 ${cx + cellSize + overlap} ${cy + cellSize - radius2} Z" fill="${primaryColor}" />`;
         }
       }
     }
