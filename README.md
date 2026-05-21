@@ -16,7 +16,14 @@ npm install
 ## Usage
 ### CLI
 ```bash
-npm start -- "Your text here" output.svg "optional-logo-url"
+# Basic usage
+npm start -- --text "Your text here" --out output.svg
+
+# With logo and custom settings
+npm start -- --text "https://google.com" --out google.png --logo "logo.png" --radius 0.8 --radius2 0.2
+
+# Show all options
+npm start -- --help
 ```
 
 ### Library

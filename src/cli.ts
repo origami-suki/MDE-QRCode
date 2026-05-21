@@ -5,8 +5,8 @@ import { generateMDEQRCode, MDEQRCodeFormat } from './index.js';
 function printUsage() {
   console.log(`
 \x1b[1mUsage:\x1b[0m
-  node dist/cli.js --text <string> [--out <path>] [--logo <url/path>] [--radius <float>] [--radius2 <float>] [--size <number>] [--margin <number>] [--primary <hex>] [--bg <hex>] [--level <L|M|Q|H>]
-  node dist/cli.js --help
+  npm start -- --text <string> [--out <path>] [--logo <url/path>] [--radius <float>] [--radius2 <float>] [--size <number>] [--margin <number>] [--primary <hex>] [--bg <hex>] [--level <L|M|Q|H>]
+  npm start -- --help
 `);
 }
 
@@ -15,7 +15,7 @@ function printHelp() {
 \x1b[1m\x1b[35mMaterial Design Expressive (MDE) QR Code Generator\x1b[0m
 
 \x1b[1mUSAGE:\x1b[0m
-  node dist/cli.js [options]
+  npm start -- [options]
 
 \x1b[1mOPTIONS:\x1b[0m
   \x1b[32m--text <string>\x1b[0m       The text or URL to encode inside the QR code.
@@ -43,10 +43,10 @@ function printHelp() {
 
 \x1b[1mEXAMPLES:\x1b[0m
   \x1b[90m# Generate a basic expressive QR code:\x1b[0m
-  node dist/cli.js --text "https://google.com" --out google.svg
+  npm start -- --text "https://google.com" --out google.svg
 
   \x1b[90m# Generate a premium PNG QR code with a logo and custom primary color:\x1b[0m
-  node dist/cli.js --text "https://github.com" --out github.png --logo "https://github.githubassets.com/favicons/favicon.png" --primary "#24292F" --radius 0.8
+  npm start -- --text "https://github.com" --out github.png --logo "https://github.githubassets.com/favicons/favicon.png" --primary "#24292F" --radius 0.8
 `);
 }
 
