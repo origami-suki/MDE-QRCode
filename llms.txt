@@ -9,7 +9,7 @@ MDE-QRCode generates QR codes with rounded, fluid corners inspired by Google's M
 - Repository: https://github.com/origami-suki/MDE-QRCode
 - Language: TypeScript (Node.js)
 - License: MIT
-- Built with: Antigravity CLI + Gemini 2.5 Flash
+- Built with: Antigravity CLI + Gemini 3.5 Flash
 
 ## Installation
 

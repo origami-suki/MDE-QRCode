@@ -14,7 +14,7 @@ Generate beautiful, rounded QR codes with fluid corners, customizable colors, an
 
 ---
 
-## ✨ Features
+## Features
 
 - **Expressive Rounded Modules** — Smooth, fluid corners following Material Design 3 principles
 - **Fluid Corner Rounding** — Two independent radius controls: outer convex corners (`--radius`) and inner connected corners (`--radius2`)
@@ -23,13 +23,13 @@ Generate beautiful, rounded QR codes with fluid corners, customizable colors, an
 - **Multiple Formats** — Export as SVG, PNG, or JPEG
 - **Full Customization** — Colors, size, margin, error correction level, and more
 
-## 📦 Installation
+## Installation
 
 ```bash
 npm install
 ```
 
-## 🚀 Usage
+## Usage
 
 ### CLI
 
@@ -70,7 +70,7 @@ const pngBuffer = await generateMDEQRCode({
 }, 'png');
 ```
 
-## ⚙️ Options
+## Options
 
 | Option | CLI Flag | Type | Default | Description |
 |--------|----------|------|---------|-------------|
@@ -85,12 +85,12 @@ const pngBuffer = await generateMDEQRCode({
 | `logoUrl` | `--logo` | `string` | — | URL or path to a center logo image |
 | — | `--out` | `string` | `"qrcode.svg"` | Output file path (extension determines format) |
 
-## 🤖 Built with
+## Built with
 
-This project was developed using [Antigravity CLI](https://github.com/google-deepmind/antigravity) with the **Gemini 2.5 Flash** model.
+This project was developed using [Antigravity CLI](https://github.com/google-deepmind/antigravity) with the **Gemini 3.5 Flash** model.
 
 > For AI agents and LLMs: see [`llms.txt`](llms.txt) for machine-readable project documentation.
 
-## 📄 License
+## License
 
 MIT
