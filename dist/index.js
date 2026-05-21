@@ -60,10 +60,10 @@ async function generateMDEQRCodeSVG(options) {
                 const L = isDark(x - 1, y) && !isFinder(x - 1, y) && !isLogoArea(x - 1, y);
                 const R = isDark(x + 1, y) && !isFinder(x + 1, y) && !isLogoArea(x + 1, y);
                 const BR = isDark(x + 1, y + 1) && !isFinder(x + 1, y + 1) && !isLogoArea(x + 1, y + 1);
-                const rTL = (T && L) ? radius2 : ((T || L) ? 0 : radius);
-                const rTR = (T && R) ? radius2 : ((T || R) ? 0 : radius);
-                const rBL = (B && L) ? radius2 : ((B || L) ? 0 : radius);
-                const rBR = (B && R) ? radius2 : ((B || R) ? 0 : radius);
+                const rTL = (T || L) ? 0 : radius;
+                const rTR = (T || R) ? 0 : radius;
+                const rBL = (B || L) ? 0 : radius;
+                const rBR = (B || R) ? 0 : radius;
                 // Apply slight physical overlap to connecting edges
                 const w = R ? cellSize + overlap : cellSize;
                 const h = B ? cellSize + overlap : cellSize;
@@ -99,19 +99,19 @@ async function generateMDEQRCodeSVG(options) {
                 const BR = isDark(x + 1, y + 1) && !isFinder(x + 1, y + 1) && !isLogoArea(x + 1, y + 1);
                 // Top-Left corner: Dark above, left, AND diagonally top-left
                 if (T && L && TL) {
-                    svgPaths += `<path d="M ${cx - overlap} ${cy - overlap} L ${cx + radius2 + overlap} ${cy - overlap} A ${radius2} ${radius2} 0 0 0 ${cx - overlap} ${cy + radius2 + overlap} Z" fill="${primaryColor}" />`;
+                    svgPaths += `<path d="M ${cx - overlap} ${cy - overlap} L ${cx + radius2} ${cy - overlap} L ${cx + radius2} ${cy} A ${radius2} ${radius2} 0 0 0 ${cx} ${cy + radius2} L ${cx - overlap} ${cy + radius2} Z" fill="${primaryColor}" />`;
                 }
                 // Top-Right corner: Dark above, right, AND diagonally top-right
                 if (T && R && TR) {
-                    svgPaths += `<path d="M ${cx + cellSize + overlap} ${cy - overlap} L ${cx + cellSize - radius2 - overlap} ${cy - overlap} A ${radius2} ${radius2} 0 0 1 ${cx + cellSize + overlap} ${cy + radius2 + overlap} Z" fill="${primaryColor}" />`;
+                    svgPaths += `<path d="M ${cx + cellSize + overlap} ${cy - overlap} L ${cx + cellSize - radius2} ${cy - overlap} L ${cx + cellSize - radius2} ${cy} A ${radius2} ${radius2} 0 0 1 ${cx + cellSize} ${cy + radius2} L ${cx + cellSize + overlap} ${cy + radius2} Z" fill="${primaryColor}" />`;
                 }
                 // Bottom-Left corner: Dark below, left, AND diagonally bottom-left
                 if (B && L && BL) {
-                    svgPaths += `<path d="M ${cx - overlap} ${cy + cellSize + overlap} L ${cx + radius2 + overlap} ${cy + cellSize + overlap} A ${radius2} ${radius2} 0 0 1 ${cx - overlap} ${cy + cellSize - radius2 - overlap} Z" fill="${primaryColor}" />`;
+                    svgPaths += `<path d="M ${cx - overlap} ${cy + cellSize + overlap} L ${cx + radius2} ${cy + cellSize + overlap} L ${cx + radius2} ${cy + cellSize} A ${radius2} ${radius2} 0 0 1 ${cx} ${cy + cellSize - radius2} L ${cx - overlap} ${cy + cellSize - radius2} Z" fill="${primaryColor}" />`;
                 }
                 // Bottom-Right corner: Dark below, right, AND diagonally bottom-right
                 if (B && R && BR) {
-                    svgPaths += `<path d="M ${cx + cellSize + overlap} ${cy + cellSize + overlap} L ${cx + cellSize - radius2 - overlap} ${cy + cellSize + overlap} A ${radius2} ${radius2} 0 0 0 ${cx + cellSize + overlap} ${cy + cellSize - radius2 - overlap} Z" fill="${primaryColor}" />`;
+                    svgPaths += `<path d="M ${cx + cellSize + overlap} ${cy + cellSize + overlap} L ${cx + cellSize - radius2} ${cy + cellSize + overlap} L ${cx + cellSize - radius2} ${cy + cellSize} A ${radius2} ${radius2} 0 0 0 ${cx + cellSize} ${cy + cellSize - radius2} L ${cx + cellSize + overlap} ${cy + cellSize - radius2} Z" fill="${primaryColor}" />`;
                 }
             }
         }
