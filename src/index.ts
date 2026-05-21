@@ -13,7 +13,6 @@ export interface MDEQRCodeOptions {
   logoUrl?: string;
   logoSize?: number;
   fluidRadius?: number; // Custom roundness level (0.0 to 1.0)
-  fluidRadius2?: number; // Custom roundness level for connected corners (0.0 to 1.0)
 }
 
 export async function generateMDEQRCodeSVG(options: MDEQRCodeOptions): Promise<string> {
@@ -25,7 +24,6 @@ export async function generateMDEQRCodeSVG(options: MDEQRCodeOptions): Promise<s
     backgroundColor = '#FFFFFF',
     errorCorrectionLevel = 'H',
     fluidRadius = 1.0,
-    fluidRadius2 = 0.1,
   } = options;
 
   const qr = QRCode.create(text, { errorCorrectionLevel });
@@ -63,7 +61,6 @@ export async function generateMDEQRCodeSVG(options: MDEQRCodeOptions): Promise<s
   };
 
   const radius = cellSize * 0.5 * Math.max(0, Math.min(1.0, fluidRadius));
-  const radius2 = cellSize * 0.5 * Math.max(0, Math.min(1.0, fluidRadius2));
   const overlap = 0.5; // 0.5px sub-pixel overlap to completely eliminate fine white gaps/creases
 
   // Draw modules
@@ -81,10 +78,10 @@ export async function generateMDEQRCodeSVG(options: MDEQRCodeOptions): Promise<s
         const L = isDark(x - 1, y) && !isFinder(x - 1, y) && !isLogoArea(x - 1, y);
         const R = isDark(x + 1, y) && !isFinder(x + 1, y) && !isLogoArea(x + 1, y);
 
-        const rTL = (T && L) ? radius2 : ((T || L) ? 0 : radius);
-        const rTR = (T && R) ? radius2 : ((T || R) ? 0 : radius);
-        const rBL = (B && L) ? radius2 : ((B || L) ? 0 : radius);
-        const rBR = (B && R) ? radius2 : ((B || R) ? 0 : radius);
+        const rTL = (T || L) ? 0 : radius;
+        const rTR = (T || R) ? 0 : radius;
+        const rBL = (B || L) ? 0 : radius;
+        const rBR = (B || R) ? 0 : radius;
 
         // Apply slight physical overlap to connecting edges
         const w = R ? cellSize + overlap : cellSize;
@@ -101,35 +98,6 @@ export async function generateMDEQRCodeSVG(options: MDEQRCodeOptions): Promise<s
           L ${cx} ${cy + rTL}
           ${rTL > 0 ? `A ${rTL} ${rTL} 0 0 1 ${cx + rTL} ${cy}` : `L ${cx} ${cy}`}
           Z" fill="${primaryColor}" />`;
-      } else {
-        // 2. Draw Concave Corner Fills with Overlaps ONLY if they are connected through the diagonal cell
-        // This prevents creating weird chiseled blocks when cells are only diagonally connected
-        const T = isDark(x, y - 1) && !isFinder(x, y - 1) && !isLogoArea(x, y - 1);
-        const B = isDark(x, y + 1) && !isFinder(x, y + 1) && !isLogoArea(x, y + 1);
-        const L = isDark(x - 1, y) && !isFinder(x - 1, y) && !isLogoArea(x - 1, y);
-        const R = isDark(x + 1, y) && !isFinder(x + 1, y) && !isLogoArea(x + 1, y);
-
-        const TL = isDark(x - 1, y - 1) && !isFinder(x - 1, y - 1) && !isLogoArea(x - 1, y - 1);
-        const TR = isDark(x + 1, y - 1) && !isFinder(x + 1, y - 1) && !isLogoArea(x + 1, y - 1);
-        const BL = isDark(x - 1, y + 1) && !isFinder(x - 1, y + 1) && !isLogoArea(x - 1, y + 1);
-        const BR = isDark(x + 1, y + 1) && !isFinder(x + 1, y + 1) && !isLogoArea(x + 1, y + 1);
-
-        // Top-Left corner: Dark above, left, AND diagonally top-left
-        if (T && L && TL) {
-          svgPaths += `<path d="M ${cx - overlap} ${cy - overlap} L ${cx + radius2 + overlap} ${cy - overlap} A ${radius2} ${radius2} 0 0 0 ${cx - overlap} ${cy + radius2 + overlap} Z" fill="${primaryColor}" />`;
-        }
-        // Top-Right corner: Dark above, right, AND diagonally top-right
-        if (T && R && TR) {
-          svgPaths += `<path d="M ${cx + cellSize + overlap} ${cy - overlap} L ${cx + cellSize - radius2 - overlap} ${cy - overlap} A ${radius2} ${radius2} 0 0 1 ${cx + cellSize + overlap} ${cy + radius2 + overlap} Z" fill="${primaryColor}" />`;
-        }
-        // Bottom-Left corner: Dark below, left, AND diagonally bottom-left
-        if (B && L && BL) {
-          svgPaths += `<path d="M ${cx - overlap} ${cy + cellSize + overlap} L ${cx + radius2 + overlap} ${cy + cellSize + overlap} A ${radius2} ${radius2} 0 0 1 ${cx - overlap} ${cy + cellSize - radius2 - overlap} Z" fill="${primaryColor}" />`;
-        }
-        // Bottom-Right corner: Dark below, right, AND diagonally bottom-right
-        if (B && R && BR) {
-          svgPaths += `<path d="M ${cx + cellSize + overlap} ${cy + cellSize + overlap} L ${cx + cellSize - radius2 - overlap} ${cy + cellSize + overlap} A ${radius2} ${radius2} 0 0 0 ${cx + cellSize + overlap} ${cy + cellSize - radius2 - overlap} Z" fill="${primaryColor}" />`;
-        }
       }
     }
   }
