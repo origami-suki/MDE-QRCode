@@ -10,7 +10,7 @@ const resvg_js_1 = require("@resvg/resvg-js");
 const jimp_1 = require("jimp");
 async function generateMDEQRCodeSVG(options) {
     const { text, size: viewSize = 512, margin = 4, primaryColor = '#1D1B20', // M3 OnSurface (Very dark)
-    backgroundColor = '#FFFFFF', errorCorrectionLevel = 'H', fluidRadius = 1.0, fluidRadius2 = 0.0, } = options;
+    backgroundColor = '#FFFFFF', errorCorrectionLevel = 'H', fluidRadius = 1.0, fluidRadius2 = 0.15, } = options;
     const qr = qrcode_1.default.create(text, { errorCorrectionLevel });
     const { modules } = qr;
     const count = modules.size;

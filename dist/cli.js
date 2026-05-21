@@ -31,7 +31,7 @@ function printHelp() {
   \x1b[32m--radius <float>\x1b[0m      Fluid roundness level between 0.0 (square) and 1.0 (perfect circle).
                          \x1b[90m(Default: 1.0)\x1b[0m
   \x1b[32m--radius2 <float>\x1b[0m     Fluid roundness level for connected corners between 0.0 and 1.0.
-                         \x1b[90m(Default: 0.0)\x1b[0m
+                         \x1b[90m(Default: 0.15)\x1b[0m
   \x1b[32m--size <number>\x1b[0m       Width/height of the output image in pixels.
                          \x1b[90m(Default: 512)\x1b[0m
   \x1b[32m--margin <number>\x1b[0m     Quiet zone margin size in cell modules.
@@ -58,7 +58,7 @@ async function main() {
     let outFile = 'qrcode.svg';
     let logoUrl = undefined;
     let fluidRadius = 1.0;
-    let fluidRadius2 = 0.0;
+    let fluidRadius2 = 0.15;
     let size = 512;
     let margin = 4;
     let primaryColor = '#1D1B20';

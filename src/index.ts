@@ -25,7 +25,7 @@ export async function generateMDEQRCodeSVG(options: MDEQRCodeOptions): Promise<s
     backgroundColor = '#FFFFFF',
     errorCorrectionLevel = 'H',
     fluidRadius = 1.0,
-    fluidRadius2 = 0.0,
+    fluidRadius2 = 0.15,
   } = options;
 
   const qr = QRCode.create(text, { errorCorrectionLevel });
