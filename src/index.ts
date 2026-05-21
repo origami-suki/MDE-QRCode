@@ -12,7 +12,7 @@ export interface MDEQRCodeOptions {
   errorCorrectionLevel?: 'L' | 'M' | 'Q' | 'H';
   logoUrl?: string;
   logoSize?: number;
-  fluidRadius?: number; // Custom roundness level (0.0 to 0.5)
+  fluidRadius?: number; // Custom roundness level (0.0 to 1.0)
 }
 
 export async function generateMDEQRCodeSVG(options: MDEQRCodeOptions): Promise<string> {
@@ -23,7 +23,7 @@ export async function generateMDEQRCodeSVG(options: MDEQRCodeOptions): Promise<s
     primaryColor = '#1D1B20', // M3 OnSurface (Very dark)
     backgroundColor = '#FFFFFF',
     errorCorrectionLevel = 'H',
-    fluidRadius = 0.5,
+    fluidRadius = 1.0,
   } = options;
 
   const qr = QRCode.create(text, { errorCorrectionLevel });
@@ -60,7 +60,7 @@ export async function generateMDEQRCodeSVG(options: MDEQRCodeOptions): Promise<s
     return x >= logoStart - 0.5 && x < logoEnd + 0.5 && y >= logoStart - 0.5 && y < logoEnd + 0.5;
   };
 
-  const radius = cellSize * Math.max(0, Math.min(0.5, fluidRadius));
+  const radius = cellSize * 0.5 * Math.max(0, Math.min(1.0, fluidRadius));
   const overlap = 0.5; // 0.5px sub-pixel overlap to completely eliminate fine white gaps/creases
 
   // Draw modules
@@ -90,13 +90,13 @@ export async function generateMDEQRCodeSVG(options: MDEQRCodeOptions): Promise<s
         svgPaths += `<path d="
           M ${cx + rTL} ${cy}
           L ${cx + w - rTR} ${cy}
-          Q ${cx + w} ${cy} ${cx + w} ${cy + rTR}
+          ${rTR > 0 ? `A ${rTR} ${rTR} 0 0 1 ${cx + w} ${cy + rTR}` : `L ${cx + w} ${cy}`}
           L ${cx + w} ${cy + h - rBR}
-          Q ${cx + w} ${cy + h} ${cx + w - rBR} ${cy + h}
+          ${rBR > 0 ? `A ${rBR} ${rBR} 0 0 1 ${cx + w - rBR} ${cy + h}` : `L ${cx + w} ${cy + h}`}
           L ${cx + rBL} ${cy + h}
-          Q ${cx} ${cy + h} ${cx} ${cy + h - rBL}
+          ${rBL > 0 ? `A ${rBL} ${rBL} 0 0 1 ${cx} ${cy + h - rBL}` : `L ${cx} ${cy + h}`}
           L ${cx} ${cy + rTL}
-          Q ${cx} ${cy} ${cx + rTL} ${cy}
+          ${rTL > 0 ? `A ${rTL} ${rTL} 0 0 1 ${cx + rTL} ${cy}` : `L ${cx} ${cy}`}
           Z" fill="${primaryColor}" />`;
       } else {
         // 2. Draw Concave Corner Fills with Overlaps ONLY if they are connected through the diagonal cell
