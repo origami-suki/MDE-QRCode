@@ -9,7 +9,7 @@ const index_js_1 = require("./index.js");
 function printUsage() {
     console.log(`
 \x1b[1mUsage:\x1b[0m
-  node dist/cli.js --text <string> [--out <path>] [--logo <url/path>] [--radius <float>] [--size <number>] [--margin <number>] [--primary <hex>] [--bg <hex>] [--level <L|M|Q|H>]
+  node dist/cli.js --text <string> [--out <path>] [--logo <url/path>] [--radius <float>] [--radius2 <float>] [--size <number>] [--margin <number>] [--primary <hex>] [--bg <hex>] [--level <L|M|Q|H>]
   node dist/cli.js --help
 `);
 }
@@ -30,6 +30,8 @@ function printHelp() {
                          \x1b[90m(Default: none)\x1b[0m
   \x1b[32m--radius <float>\x1b[0m      Fluid roundness level between 0.0 (square) and 1.0 (perfect circle).
                          \x1b[90m(Default: 1.0)\x1b[0m
+  \x1b[32m--radius2 <float>\x1b[0m     Fluid roundness level for connected corners between 0.0 and 1.0.
+                         \x1b[90m(Default: 0.0)\x1b[0m
   \x1b[32m--size <number>\x1b[0m       Width/height of the output image in pixels.
                          \x1b[90m(Default: 512)\x1b[0m
   \x1b[32m--margin <number>\x1b[0m     Quiet zone margin size in cell modules.
@@ -56,6 +58,7 @@ async function main() {
     let outFile = 'qrcode.svg';
     let logoUrl = undefined;
     let fluidRadius = 1.0;
+    let fluidRadius2 = 0.0;
     let size = 512;
     let margin = 4;
     let primaryColor = '#1D1B20';
@@ -108,6 +111,21 @@ async function main() {
                 process.exit(1);
             }
             fluidRadius = num;
+        }
+        else if (arg === '--radius2') {
+            const val = args[++i];
+            if (!val) {
+                console.error('\x1b[31mError: Missing value for --radius2 option.\x1b[0m');
+                printUsage();
+                process.exit(1);
+            }
+            const num = parseFloat(val);
+            if (isNaN(num) || num < 0.0 || num > 1.0) {
+                console.error('\x1b[31mError: --radius2 must be a float between 0.0 and 1.0.\x1b[0m');
+                printUsage();
+                process.exit(1);
+            }
+            fluidRadius2 = num;
         }
         else if (arg === '--size') {
             const val = args[++i];
@@ -186,6 +204,7 @@ async function main() {
             text,
             logoUrl,
             fluidRadius,
+            fluidRadius2,
             size,
             margin,
             primaryColor,
