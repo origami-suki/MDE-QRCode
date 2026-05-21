@@ -85,6 +85,12 @@ const pngBuffer = await generateMDEQRCode({
 | `logoUrl` | `--logo` | `string` | — | URL or path to a center logo image |
 | — | `--out` | `string` | `"qrcode.svg"` | Output file path (extension determines format) |
 
+## 🤖 Built with
+
+This project was developed using [Antigravity CLI](https://github.com/google-deepmind/antigravity) with the **Gemini 2.5 Flash** model.
+
+> For AI agents and LLMs: see [`llms.txt`](llms.txt) for machine-readable project documentation.
+
 ## 📄 License
 
 MIT

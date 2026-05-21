@@ -1,0 +1,173 @@
+# MDE-QRCode
+
+> A Google Material Design 3 (M3) Expressive style QR Code generator for Node.js.
+
+## Overview
+
+MDE-QRCode generates QR codes with rounded, fluid corners inspired by Google's Material Design 3 Expressive visual language. It produces high-quality SVG, PNG, and JPEG outputs with customizable styling, including two independent corner radius controls and optional center logo embedding.
+
+- Repository: https://github.com/origami-suki/MDE-QRCode
+- Language: TypeScript (Node.js)
+- License: MIT
+- Built with: Antigravity CLI + Gemini 2.5 Flash
+
+## Installation
+
+```bash
+git clone https://github.com/origami-suki/MDE-QRCode.git
+cd MDE-QRCode
+npm install
+```
+
+## CLI Usage
+
+The CLI can be invoked in two ways:
+
+```bash
+npm start -- [options]
+# or
+node dist/cli.js [options]
+```
+
+### All CLI Options
+
+```
+--text <string>       Text or URL to encode (default: "https://github.com/origami-suki/MDE-QRCode")
+--out <path>          Output file path; extension determines format: .svg, .png, .jpg (default: "qrcode.svg")
+--logo <url/path>     URL or local file path to a center logo image (default: none)
+--radius <float>      Outer convex corner roundness, 0.0 (square) to 1.0 (circle) (default: 1.0)
+--radius2 <float>     Inner connected corner roundness, 0.0 (sharp) to 1.0 (full round) (default: 0.15)
+--size <number>       Output width/height in pixels (default: 512)
+--margin <number>     Quiet zone margin in cell modules (default: 4)
+--primary <hex>       Primary module color as hex string (default: "#1D1B20")
+--bg <hex>            Background color as hex string (default: "#FFFFFF")
+--level <L|M|Q|H>     Error correction level (default: "H")
+-h, --help            Show help message
+```
+
+### CLI Examples
+
+```bash
+# Basic SVG QR code
+npm start -- --text "https://example.com" --out example.svg
+
+# High-res PNG with custom color
+npm start -- --text "Hello World" --out hello.png --size 1024 --primary "#6750A4"
+
+# With logo and relaxed rounding
+npm start -- --text "https://github.com" --out github.svg --logo "logo.png" --radius 0.8 --radius2 0.2
+
+# Fully square modules, no connected rounding
+npm start -- --text "test" --out square.svg --radius 0 --radius2 0
+
+# JPEG output with lower error correction
+npm start -- --text "data" --out data.jpg --level M
+```
+
+## Library API
+
+### `generateMDEQRCodeSVG(options: MDEQRCodeOptions): Promise<string>`
+
+Returns the QR code as an SVG string.
+
+### `generateMDEQRCode(options: MDEQRCodeOptions, format?: MDEQRCodeFormat): Promise<string | Buffer>`
+
+Returns the QR code in the specified format. Format can be `'svg'`, `'png'`, `'jpg'`, or `'jpeg'`. SVG returns a string; raster formats return a Buffer.
+
+### MDEQRCodeOptions Interface
+
+```typescript
+interface MDEQRCodeOptions {
+  text: string;                                    // Required. Text or URL to encode.
+  size?: number;                                   // Output size in pixels. Default: 512.
+  margin?: number;                                 // Quiet zone margin in cell modules. Default: 4.
+  primaryColor?: string;                           // Module fill color. Default: "#1D1B20".
+  backgroundColor?: string;                        // Background color. Default: "#FFFFFF".
+  errorCorrectionLevel?: 'L' | 'M' | 'Q' | 'H';   // Error correction level. Default: "H".
+  logoUrl?: string;                                // URL or path to center logo image.
+  fluidRadius?: number;                            // Outer corner roundness, 0.0–1.0. Default: 1.0.
+  fluidRadius2?: number;                           // Connected corner roundness, 0.0–1.0. Default: 0.15.
+}
+```
+
+### Library Examples
+
+```typescript
+import { generateMDEQRCodeSVG, generateMDEQRCode } from 'mde-qrcode';
+
+// Example 1: Generate SVG string with defaults
+const svg = await generateMDEQRCodeSVG({
+  text: 'https://example.com',
+});
+
+// Example 2: Generate SVG with full customization
+const customSvg = await generateMDEQRCodeSVG({
+  text: 'https://google.com',
+  size: 800,
+  margin: 2,
+  primaryColor: '#4285F4',
+  backgroundColor: '#F8F9FA',
+  fluidRadius: 0.8,
+  fluidRadius2: 0.2,
+  errorCorrectionLevel: 'Q',
+});
+
+// Example 3: Generate PNG buffer
+const pngBuffer = await generateMDEQRCode({
+  text: 'Hello World',
+  size: 1024,
+  primaryColor: '#6750A4',
+  backgroundColor: '#FEF7FF',
+}, 'png');
+
+// Example 4: Generate with center logo
+const logoSvg = await generateMDEQRCodeSVG({
+  text: 'https://github.com',
+  logoUrl: 'https://github.githubassets.com/favicons/favicon.png',
+  errorCorrectionLevel: 'H', // Use H for logo tolerance
+});
+```
+
+## Technical Details
+
+### Radius Parameters Explained
+
+- **`fluidRadius` / `--radius`**: Controls the convex (outer) corners of individual dark modules. At `1.0`, each isolated module becomes a perfect circle. At `0.0`, modules are square. When a module has an adjacent neighbor, the shared edge becomes straight (radius is set to 0 on that corner) so modules merge seamlessly.
+
+- **`fluidRadius2` / `--radius2`**: Controls the concave (inner) corners where dark modules meet at a diagonal. When two dark modules share an L-shaped or T-shaped connection, the inner corner of the white cell at the diagonal can be filled with a smooth arc. At `0.0`, these inner corners are sharp. At higher values, they become rounded, creating a more fluid, organic appearance.
+
+### Finder Patterns
+
+The three QR code finder patterns (top-left, top-right, bottom-left) use Material Design 3 Expressive styling:
+- Outer frame: Squircle (rounded rectangle with `2.2 × cellSize` corner radius)
+- Inner ring: Rounded rectangle with `1.2 × cellSize` corner radius, cut out via `evenodd` fill rule
+- Center eye: Perfect circle with `1.5 × cellSize` radius
+
+### Output Formats
+
+| Format | Extension | Returns | Notes |
+|--------|-----------|---------|-------|
+| SVG | `.svg` | `string` | Vector, scalable, default |
+| PNG | `.png` | `Buffer` | Rasterized via `@resvg/resvg-js` |
+| JPEG | `.jpg` / `.jpeg` | `Buffer` | Converted from PNG via `jimp` |
+
+### Dependencies
+
+- `qrcode` — QR matrix generation
+- `@resvg/resvg-js` — SVG to PNG rasterization
+- `jimp` — PNG to JPEG conversion
+
+## Project Structure
+
+```
+MDE-QRCode/
+├── src/
+│   ├── index.ts      # Core QR code generation logic (SVG builder)
+│   ├── cli.ts        # CLI argument parser and entry point
+│   └── colors.ts     # Material Design 3 color constants
+├── dist/             # Compiled JavaScript output (generated by tsc)
+├── output/           # Default output directory for generated QR codes
+├── package.json
+├── tsconfig.json
+└── llms.txt          # This file — AI-readable documentation
+```
