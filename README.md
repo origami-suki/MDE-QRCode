@@ -12,6 +12,8 @@ Generate beautiful, rounded QR codes with fluid corners, customizable colors, an
 
 </div>
 
+> For AI agents and LLMs: see [`llms.txt`](llms.txt) for machine-readable project documentation.
+
 ---
 
 ## Features
@@ -88,8 +90,6 @@ const pngBuffer = await generateMDEQRCode({
 ## Built with
 
 This project was developed using [Antigravity CLI](https://github.com/google-deepmind/antigravity) with the **Gemini 3.5 Flash** model.
-
-> For AI agents and LLMs: see [`llms.txt`](llms.txt) for machine-readable project documentation.
 
 ## License
 
